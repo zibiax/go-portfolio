@@ -1,65 +1,76 @@
 package main
 
 import (
-    "net/http"
-    "bytes"
+	"encoding/json"
+	"html/template"
+	"log"
+	"net/http"
+	"os"
+    "context"
 
-    "github.com/a-h/templ"
-    "github.com/gin-gonic/gin"
+	"github.com/google/go-github/v35/github"
+	"golang.org/x/oauth2"
 )
 
+type Project struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	ImageURL    string `json:"image_url"`
+}
+
 func main() {
-    r := gin.Default()
-    templateEngine, err := templ.New()
-    if err != nil {
-        panic(err) // Handle initialization error
-    }
+	http.HandleFunc("/", handleIndex)
+	http.HandleFunc("/projects", handleProjects)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-    // Serve the main page
-    r.GET("/", func(c *gin.Context) {
-        var buf bytes.Buffer
-        err := templateEngine.RenderTemplate(&buf, "templates/index.templ", gin.H{
-            "title": "Home Page",
-        })
-        if err != nil {
-            c.AbortWithError(http.StatusInternalServerError, err)
-            return
-        }
-        c.Data(http.StatusOK, "text/html; charset=utf-8", buf.Bytes())
-    })
-
-    // HTMX endpoints
-    setupHTMXEndpoints(r, templateEngine)
-
-    // Serve robots.txt and static assets
-    r.StaticFile("/robots.txt", "./robots.txt")
-    r.Static("/assets", "./assets")
-
-    // Run the server
-    r.Run(":8080")
+	log.Println("Server starting on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func setupHTMXEndpoints(r *gin.Engine, templateEngine *templ.Template) {
-    // endpoints to template file
-    endpoints := map[string]string{
-        "/about": "templates/about.templ",
-        "/projects": "templates/projects.templ",
-        "/contact": "templates/contact.templ",
-    }
-
-    for path, tmpl := range endpoints {
-        r.GET(path, func(c *gin.Context) {
-            var buf bytes.Buffer
-            err := templateEngine.RenderTemplate(&buf, tmpl, gin.H{
-                "title": c.Param("title"),
-            })
-            if err != nil {
-                c.AbortWithError(http.StatusInternalServerError, err)
-                return
-            }
-            c.Data(http.StatusOK, "text/html; charset=utf-8", buf.Bytes())
-        })
-    }
+func handleIndex(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, nil)
 }
 
+func handleProjects(w http.ResponseWriter, r *http.Request) {
+	projects, err := getGithubProjects()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(projects)
+}
+
+func getGithubProjects() ([]Project, error) {
+	token := os.Getenv("GITHUB_TOKEN")
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	repos, _, err := client.Repositories.List(ctx, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var projects []Project
+	for _, repo := range repos {
+		projects = append(projects, Project{
+			Name:        repo.GetName(),
+			Description: repo.GetDescription(),
+			URL:         repo.GetHTMLURL(),
+			ImageURL:    repo.GetOwner().GetAvatarURL(),
+		})
+	}
+
+	return projects, nil
+}
