@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio</title>
+    <script src="https://unpkg.com/htmx.org@1.6.1"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/js/bundle.css">
+    <script>
+        // Add debugging for HTMX events
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            console.log('HTMX Request completed:', evt.detail);
+            if (evt.detail.failed) {
+                console.error('HTMX Request failed:', evt.detail.xhr.responseText);
+            }
+        });
+
+        document.addEventListener('htmx:afterSwap', function(evt) {
+            console.log('HTMX Content swapped:', evt.detail);
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <h1>My GitHub Portfolio</h1>
+    </header>
+    <main>
+        <div id="projects" 
+             hx-get="/projects" 
+             hx-trigger="load" 
+             hx-swap="innerHTML"
+             hx-indicator="#loading">
+            <div id="loading">Loading projects...</div>
+        </div>
+    </main>
+    <script src="/static/js/bundle.js"></script>
+</body>
+</html>
