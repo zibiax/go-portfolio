@@ -6,9 +6,10 @@ import css from 'rollup-plugin-css-only';
 export default {
     input: 'src/main.js',
     output: {
-        file: '../static/js/bundle.js',
+        sourcemap: true,
         format: 'iife',
-        name: 'app'
+        name: 'app',
+        file: '../static/js/bundle.js'
     },
     plugins: [
         svelte({
@@ -23,4 +24,4 @@ export default {
         }),
         commonjs()
     ]
-}
+};

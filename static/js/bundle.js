@@ -22,14 +22,6 @@
     function safe_not_equal(a, b) {
         return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
     }
-    let src_url_equal_anchor;
-    function src_url_equal(element_src, url) {
-        if (!src_url_equal_anchor) {
-            src_url_equal_anchor = document.createElement('a');
-        }
-        src_url_equal_anchor.href = url;
-        return element_src === src_url_equal_anchor.href;
-    }
     function is_empty(obj) {
         return Object.keys(obj).length === 0;
     }
@@ -61,6 +53,14 @@
     }
     function children(element) {
         return Array.from(element.childNodes);
+    }
+    function set_style(node, key, value, important) {
+        if (value == null) {
+            node.style.removeProperty(key);
+        }
+        else {
+            node.style.setProperty(key, value, important ? 'important' : '');
+        }
     }
     function custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
         const e = document.createEvent('CustomEvent');
@@ -378,79 +378,180 @@
 
     const file = "src/ProjectCard.svelte";
 
-    function create_fragment(ctx) {
+    // (27:12) {#if project.language}
+    function create_if_block_1(ctx) {
     	let div;
-    	let img;
-    	let img_src_value;
-    	let img_alt_value;
+    	let span;
     	let t0;
-    	let h2;
-    	let t1_value = /*project*/ ctx[0].name + "";
+    	let t1_value = /*project*/ ctx[0].language + "";
     	let t1;
-    	let t2;
-    	let p;
-    	let t3_value = /*project*/ ctx[0].description + "";
-    	let t3;
-    	let t4;
-    	let a;
-    	let t5;
-    	let a_href_value;
 
     	const block = {
     		c: function create() {
     			div = element("div");
-    			img = element("img");
+    			span = element("span");
     			t0 = space();
-    			h2 = element("h2");
     			t1 = text(t1_value);
-    			t2 = space();
+    			attr_dev(span, "class", "language-dot svelte-1spn9tm");
+    			set_style(span, "background-color", /*getLanguageColor*/ ctx[1](/*project*/ ctx[0].language));
+    			add_location(span, file, 28, 20, 786);
+    			attr_dev(div, "class", "language svelte-1spn9tm");
+    			add_location(div, file, 27, 16, 743);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			append_dev(div, span);
+    			append_dev(div, t0);
+    			append_dev(div, t1);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*project*/ 1) {
+    				set_style(span, "background-color", /*getLanguageColor*/ ctx[1](/*project*/ ctx[0].language));
+    			}
+
+    			if (dirty & /*project*/ 1 && t1_value !== (t1_value = /*project*/ ctx[0].language + "")) set_data_dev(t1, t1_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1.name,
+    		type: "if",
+    		source: "(27:12) {#if project.language}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (35:8) {#if project.description}
+    function create_if_block(ctx) {
+    	let p;
+    	let t_value = /*project*/ ctx[0].description + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
     			p = element("p");
-    			t3 = text(t3_value);
-    			t4 = space();
+    			t = text(t_value);
+    			attr_dev(p, "class", "description svelte-1spn9tm");
+    			add_location(p, file, 35, 12, 1026);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, p, anchor);
+    			append_dev(p, t);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*project*/ 1 && t_value !== (t_value = /*project*/ ctx[0].description + "")) set_data_dev(t, t_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(p);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block.name,
+    		type: "if",
+    		source: "(35:8) {#if project.description}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment(ctx) {
+    	let div2;
+    	let div1;
+    	let div0;
+    	let h2;
+    	let t0_value = /*project*/ ctx[0].name + "";
+    	let t0;
+    	let t1;
+    	let t2;
+    	let t3;
+    	let a;
+    	let t4;
+    	let a_href_value;
+    	let if_block0 = /*project*/ ctx[0].language && create_if_block_1(ctx);
+    	let if_block1 = /*project*/ ctx[0].description && create_if_block(ctx);
+
+    	const block = {
+    		c: function create() {
+    			div2 = element("div");
+    			div1 = element("div");
+    			div0 = element("div");
+    			h2 = element("h2");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			if (if_block0) if_block0.c();
+    			t2 = space();
+    			if (if_block1) if_block1.c();
+    			t3 = space();
     			a = element("a");
-    			t5 = text("View on GitHub");
-    			if (!src_url_equal(img.src, img_src_value = /*project*/ ctx[0].image_url)) attr_dev(img, "src", img_src_value);
-    			attr_dev(img, "alt", img_alt_value = /*project*/ ctx[0].name);
-    			attr_dev(img, "class", "svelte-uhwl89");
-    			add_location(img, file, 5, 4, 67);
-    			attr_dev(h2, "class", "svelte-uhwl89");
-    			add_location(h2, file, 6, 4, 122);
-    			add_location(p, file, 7, 4, 150);
+    			t4 = text("View on GitHub");
+    			attr_dev(h2, "class", "project-name svelte-1spn9tm");
+    			add_location(h2, file, 25, 12, 647);
+    			attr_dev(div0, "class", "header svelte-1spn9tm");
+    			add_location(div0, file, 24, 8, 614);
     			attr_dev(a, "href", a_href_value = /*project*/ ctx[0].url);
     			attr_dev(a, "target", "_blank");
     			attr_dev(a, "rel", "noopener noreferrer");
-    			attr_dev(a, "class", "svelte-uhwl89");
-    			add_location(a, file, 8, 4, 183);
-    			attr_dev(div, "class", "card svelte-uhwl89");
-    			add_location(div, file, 4, 0, 44);
+    			attr_dev(a, "class", "github-link svelte-1spn9tm");
+    			add_location(a, file, 38, 8, 1098);
+    			attr_dev(div1, "class", "card-content");
+    			add_location(div1, file, 23, 4, 579);
+    			attr_dev(div2, "class", "card svelte-1spn9tm");
+    			add_location(div2, file, 22, 0, 556);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			append_dev(div, img);
-    			append_dev(div, t0);
-    			append_dev(div, h2);
-    			append_dev(h2, t1);
-    			append_dev(div, t2);
-    			append_dev(div, p);
-    			append_dev(p, t3);
-    			append_dev(div, t4);
-    			append_dev(div, a);
-    			append_dev(a, t5);
+    			insert_dev(target, div2, anchor);
+    			append_dev(div2, div1);
+    			append_dev(div1, div0);
+    			append_dev(div0, h2);
+    			append_dev(h2, t0);
+    			append_dev(div0, t1);
+    			if (if_block0) if_block0.m(div0, null);
+    			append_dev(div1, t2);
+    			if (if_block1) if_block1.m(div1, null);
+    			append_dev(div1, t3);
+    			append_dev(div1, a);
+    			append_dev(a, t4);
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*project*/ 1 && !src_url_equal(img.src, img_src_value = /*project*/ ctx[0].image_url)) {
-    				attr_dev(img, "src", img_src_value);
+    			if (dirty & /*project*/ 1 && t0_value !== (t0_value = /*project*/ ctx[0].name + "")) set_data_dev(t0, t0_value);
+
+    			if (/*project*/ ctx[0].language) {
+    				if (if_block0) {
+    					if_block0.p(ctx, dirty);
+    				} else {
+    					if_block0 = create_if_block_1(ctx);
+    					if_block0.c();
+    					if_block0.m(div0, null);
+    				}
+    			} else if (if_block0) {
+    				if_block0.d(1);
+    				if_block0 = null;
     			}
 
-    			if (dirty & /*project*/ 1 && img_alt_value !== (img_alt_value = /*project*/ ctx[0].name)) {
-    				attr_dev(img, "alt", img_alt_value);
+    			if (/*project*/ ctx[0].description) {
+    				if (if_block1) {
+    					if_block1.p(ctx, dirty);
+    				} else {
+    					if_block1 = create_if_block(ctx);
+    					if_block1.c();
+    					if_block1.m(div1, t3);
+    				}
+    			} else if (if_block1) {
+    				if_block1.d(1);
+    				if_block1 = null;
     			}
-
-    			if (dirty & /*project*/ 1 && t1_value !== (t1_value = /*project*/ ctx[0].name + "")) set_data_dev(t1, t1_value);
-    			if (dirty & /*project*/ 1 && t3_value !== (t3_value = /*project*/ ctx[0].description + "")) set_data_dev(t3, t3_value);
 
     			if (dirty & /*project*/ 1 && a_href_value !== (a_href_value = /*project*/ ctx[0].url)) {
     				attr_dev(a, "href", a_href_value);
@@ -459,7 +560,9 @@
     		i: noop,
     		o: noop,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
+    			if (detaching) detach_dev(div2);
+    			if (if_block0) if_block0.d();
+    			if (if_block1) if_block1.d();
     		}
     	};
 
@@ -479,6 +582,24 @@
     	validate_slots('ProjectCard', slots, []);
     	let { project } = $$props;
 
+    	const languageColors = {
+    		'javascript': '#f1e05a',
+    		'typescript': '#2b7489',
+    		'python': '#3572A5',
+    		'go': '#00ADD8',
+    		'java': '#b07219',
+    		'html': '#e34c26',
+    		'css': '#563d7c',
+    		'rust': '#dea584',
+    		'default': '#6e7681'
+    	};
+
+    	function getLanguageColor(lang) {
+    		if (!lang) return languageColors.default;
+    		const normalizedLang = lang.toLowerCase();
+    		return languageColors[normalizedLang] || languageColors.default;
+    	}
+
     	$$self.$$.on_mount.push(function () {
     		if (project === undefined && !('project' in $$props || $$self.$$.bound[$$self.$$.props['project']])) {
     			console.warn("<ProjectCard> was created without expected prop 'project'");
@@ -495,7 +616,11 @@
     		if ('project' in $$props) $$invalidate(0, project = $$props.project);
     	};
 
-    	$$self.$capture_state = () => ({ project });
+    	$$self.$capture_state = () => ({
+    		project,
+    		languageColors,
+    		getLanguageColor
+    	});
 
     	$$self.$inject_state = $$props => {
     		if ('project' in $$props) $$invalidate(0, project = $$props.project);
@@ -505,7 +630,7 @@
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [project];
+    	return [project, getLanguageColor];
     }
 
     class ProjectCard extends SvelteComponentDev {
@@ -530,22 +655,33 @@
     	}
     }
 
-    // This will handle the HTMX response and create Svelte components
     document.addEventListener('htmx:afterSwap', function(event) {
         if (event.detail.target.id === 'projects') {
-            const projects = JSON.parse(event.detail.xhr.response);
-            const container = document.getElementById('projects');
-            container.innerHTML = '';
+            try {
+                const projects = JSON.parse(event.detail.xhr.response);
+                const container = document.getElementById('projects');
+                container.innerHTML = '';
 
-            projects.forEach(project => {
-                const div = document.createElement('div');
-                new ProjectCard({
-                    target: div,
-                    props: { project }
+                if (projects.length === 0) {
+                    container.innerHTML = '<p>No projects found</p>';
+                    return;
+                }
+
+                projects.forEach(project => {
+                    const div = document.createElement('div');
+                    new ProjectCard({
+                        target: div,
+                        props: { project }
+                    });
+                    container.appendChild(div);
                 });
-                container.appendChild(div);
-            });
+            } catch (error) {
+                console.error('Error processing projects:', error);
+                const container = document.getElementById('projects');
+                container.innerHTML = `<p>Error loading projects: ${error.message}</p>`;
+            }
         }
     });
 
 })();
+//# sourceMappingURL=bundle.js.map
