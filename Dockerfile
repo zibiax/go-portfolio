@@ -11,6 +11,9 @@ COPY go.mod go.sum ./
 RUN go run download && npm install
 
 COPY *.go ./
+COPY . ./
+
+RUN npm run build
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-gs-ping
 
