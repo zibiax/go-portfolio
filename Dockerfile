@@ -1,9 +1,14 @@
 FROM golang:1.23.2
+FROM node:22 AS build
 
 WORKDIR /app
 
+COPY package.json ./
+COPY package.lock ./
+
 COPY go.mod go.sum ./
-RUN go run download
+
+RUN go run download && npm install
 
 COPY *.go ./
 
