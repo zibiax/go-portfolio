@@ -45,8 +45,8 @@ func main() {
 	http.HandleFunc("/projects", handleProjects)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Server starting on :8090")
+	log.Fatal(http.ListenAndServe(":8090", nil))
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {

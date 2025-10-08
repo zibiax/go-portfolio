@@ -21,9 +21,26 @@
         });
     </script>
 </head>
-<body>
+<body class="preload">
+    <div class="splash-screen" aria-hidden="true">
+        <div class="splash-content">
+            <p class="splash-kicker">Hi, I'm Martin Evenbom</p>
+            <h2 class="splash-title">Computer Engineering Student</h2>
+            <p class="splash-subtitle">Always learning, building, and sharing what I discover.</p>
+        </div>
+        <div class="splash-orb splash-orb--one"></div>
+        <div class="splash-orb splash-orb--two"></div>
+    </div>
+    <noscript>
+        <style>
+            body.preload header,
+            body.preload main { opacity: 1 !important; transform: none !important; }
+            .splash-screen { display: none !important; }
+        </style>
+    </noscript>
     <header>
-        <h1>Martin Evenbom's Portfolio</h1>
+        <h1>Martin Evenbom · Computer Engineering Student</h1>
+        <p class="site-tagline">Always learning and improving through code.</p>
     </header>
     <main>
         <div id="projects" 
@@ -35,5 +52,13 @@
         </div>
     </main>
     <script src="/static/js/bundle.js"></script>
+    <script>
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                document.body.classList.remove('preload');
+                document.body.classList.add('page-loaded');
+            }, 2000);
+        });
+    </script>
 </body>
 </html>
