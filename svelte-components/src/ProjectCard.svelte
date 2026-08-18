@@ -1,5 +1,5 @@
 <script>
-    export let project;
+    let { project } = $props();
 
     const languageColors = {
         'javascript': '#f1e05a',

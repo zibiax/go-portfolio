@@ -7,11 +7,11 @@
     "dev": "rollup -c -w"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^15.0.0",
-    "@rollup/plugin-commonjs": "^24.0.0",
-    "rollup": "^3.21.0",
-    "rollup-plugin-svelte": "^7.1.6",
-    "rollup-plugin-css-only": "^4.3.0",
-    "svelte": "^3.59.2"
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "rollup": "^4.62.4",
+    "rollup-plugin-svelte": "^7.2.3",
+    "rollup-plugin-css-only": "^4.5.5",
+    "svelte": "^5.56.9"
   }
 }

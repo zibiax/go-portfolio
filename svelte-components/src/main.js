@@ -1,3 +1,4 @@
+import { mount } from 'svelte';
 import ProjectCard from './ProjectCard.svelte';
 
 document.addEventListener('htmx:afterSwap', function(event) {
@@ -14,7 +15,7 @@ document.addEventListener('htmx:afterSwap', function(event) {
 
             projects.forEach(project => {
                 const div = document.createElement('div');
-                new ProjectCard({
+                mount(ProjectCard, {
                     target: div,
                     props: { project }
                 });
