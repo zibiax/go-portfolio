@@ -1,1 +1,3 @@
 svelte-components/node_modules/
+data/
+.env

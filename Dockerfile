@@ -1,22 +1,27 @@
-FROM golang:1.23.2
-FROM node:22 AS build
+FROM golang:1.25 AS build
 
 WORKDIR /app
 
-COPY package.json ./
-COPY package.lock ./
-
 COPY go.mod go.sum ./
-
-RUN go run download && npm install
+RUN go mod download
 
 COPY *.go ./
-COPY . ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /portfolio .
 
-RUN npm run build
+FROM debian:bookworm-slim
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-gs-ping
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 8080
+WORKDIR /app
 
-CMD ["/docker/gs-ping"]
+COPY --from=build /portfolio ./portfolio
+COPY templates ./templates
+COPY static ./static
+COPY robots.txt ./robots.txt
+
+ENV BLOG_DB_PATH=/app/data/blog.db
+VOLUME ["/app/data"]
+
+EXPOSE 5000
+
+CMD ["./portfolio"]

@@ -3,3 +3,6 @@
 .gitignore
 README.md
 build
+data
+ssh-site
+svelte-components/node_modules

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin · Posts</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="page-loaded">
+    <header>
+        <h1>Posts</h1>
+        <nav class="site-nav">
+            <a href="/blog">To the Blog</a>
+            <a href="/admin/posts/new">New post</a>
+            <form action="/logout" method="POST" class="inline-form">
+                <button type="submit" class="link-button">Log out</button>
+            </form>
+        </nav>
+    </header>
+    <main>
+        {{if not .Posts}}
+        <div class="admin-empty">
+            <p>No posts yet.</p>
+        </div>
+        {{else}}
+        <div class="table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Posts}}
+                    <tr>
+                        <td>{{.Title}}</td>
+                        <td>
+                            {{if .Published}}
+                            <span class="status-badge status-badge--published">Published</span>
+                            {{else}}
+                            <span class="status-badge status-badge--draft">Draft</span>
+                            {{end}}
+                        </td>
+                        <td>{{.UpdatedAt.Format "2006-01-02 15:04"}}</td>
+                        <td class="admin-actions">
+                            <a href="/admin/posts/{{.ID}}/edit">Edit</a>
+                            <form action="/admin/posts/{{.ID}}/delete" method="POST" class="inline-form" onsubmit="return confirm('Delete this post?');">
+                                <button type="submit" class="link-button link-button-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{end}}
+    </main>
+</body>
+</html>

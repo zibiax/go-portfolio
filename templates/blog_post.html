@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Post.Title}} · Blog</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="page-loaded">
+    <header>
+        <h1 class="gradient-text">{{.Post.Title}}</h1>
+        <nav class="site-nav">
+            <a href="/blog">Blog</a>
+            <a href="/">Home</a>
+        </nav>
+    </header>
+    <main>
+        <p class="blog-list-date">{{.Post.CreatedAt.Format "January 2, 2006 at 15:04"}}</p>
+        <article class="blog-post">
+            {{.ContentHTML}}
+        </article>
+    </main>
+</body>
+</html>

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v35/github"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
 )
 
@@ -36,17 +39,58 @@ func getProjectData(repo *github.Repository) Project {
 }
 
 func main() {
+	genHash := flag.String("genhash", "", "print a bcrypt hash of the given password (for ADMIN_PASSWORD_HASH) and exit")
+	flag.Parse()
+
+	if *genHash != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(*genHash), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(hash))
+		return
+	}
+
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		log.Println("Warning: GITHUB_TOKEN is not set")
 	}
 
-	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/projects", handleProjects)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	if os.Getenv("ADMIN_USERNAME") == "" || os.Getenv("ADMIN_PASSWORD_HASH") == "" {
+		log.Println("Warning: ADMIN_USERNAME / ADMIN_PASSWORD_HASH not set, admin login will always fail")
+	}
 
-	log.Println("Server starting on :8090")
-	log.Fatal(http.ListenAndServe(":8090", nil))
+	dbPath := os.Getenv("BLOG_DB_PATH")
+	if dbPath == "" {
+		dbPath = "data/blog.db"
+	}
+	if err := initDB(dbPath); err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /{$}", handleIndex)
+	mux.HandleFunc("GET /projects", handleProjects)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	mux.HandleFunc("GET /blog", handleBlogList)
+	mux.HandleFunc("GET /blog/{slug}", handleBlogPost)
+
+	mux.HandleFunc("GET /login", handleLoginPage)
+	mux.HandleFunc("POST /login", handleLoginSubmit)
+	mux.HandleFunc("POST /logout", handleLogout)
+
+	mux.HandleFunc("GET /admin", requireAuth(handleAdminDashboard))
+	mux.HandleFunc("GET /admin/posts/new", requireAuth(handleAdminPostNewForm))
+	mux.HandleFunc("POST /admin/posts/new", requireAuth(handleAdminPostNewSubmit))
+	mux.HandleFunc("GET /admin/posts/{id}/edit", requireAuth(handleAdminPostEditForm))
+	mux.HandleFunc("POST /admin/posts/{id}/edit", requireAuth(handleAdminPostEditSubmit))
+	mux.HandleFunc("POST /admin/posts/{id}/delete", requireAuth(handleAdminPostDelete))
+
+	log.Println("Server starting on :5000")
+	log.Fatal(http.ListenAndServe(":5000", mux))
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +132,7 @@ func getGithubProjects() ([]Project, error) {
 		Sort:        "updated",
 		Direction:   "desc",
 	}
-	
+
 	repos, _, err := client.Repositories.List(ctx, "", opts)
 	if err != nil {
 		return nil, err

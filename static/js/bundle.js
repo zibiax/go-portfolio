@@ -392,10 +392,10 @@
     			span = element("span");
     			t0 = space();
     			t1 = text(t1_value);
-    			attr_dev(span, "class", "language-dot svelte-1spn9tm");
+    			attr_dev(span, "class", "language-dot svelte-1946wek");
     			set_style(span, "background-color", /*getLanguageColor*/ ctx[1](/*project*/ ctx[0].language));
     			add_location(span, file, 28, 20, 786);
-    			attr_dev(div, "class", "language svelte-1spn9tm");
+    			attr_dev(div, "class", "language svelte-1946wek");
     			add_location(div, file, 27, 16, 743);
     		},
     		m: function mount(target, anchor) {
@@ -437,7 +437,7 @@
     		c: function create() {
     			p = element("p");
     			t = text(t_value);
-    			attr_dev(p, "class", "description svelte-1spn9tm");
+    			attr_dev(p, "class", "description svelte-1946wek");
     			add_location(p, file, 35, 12, 1026);
     		},
     		m: function mount(target, anchor) {
@@ -493,18 +493,18 @@
     			t3 = space();
     			a = element("a");
     			t4 = text("View on GitHub");
-    			attr_dev(h2, "class", "project-name svelte-1spn9tm");
+    			attr_dev(h2, "class", "project-name svelte-1946wek");
     			add_location(h2, file, 25, 12, 647);
-    			attr_dev(div0, "class", "header svelte-1spn9tm");
+    			attr_dev(div0, "class", "header svelte-1946wek");
     			add_location(div0, file, 24, 8, 614);
     			attr_dev(a, "href", a_href_value = /*project*/ ctx[0].url);
     			attr_dev(a, "target", "_blank");
     			attr_dev(a, "rel", "noopener noreferrer");
-    			attr_dev(a, "class", "github-link svelte-1spn9tm");
+    			attr_dev(a, "class", "github-link svelte-1946wek");
     			add_location(a, file, 38, 8, 1098);
     			attr_dev(div1, "class", "card-content");
     			add_location(div1, file, 23, 4, 579);
-    			attr_dev(div2, "class", "card svelte-1spn9tm");
+    			attr_dev(div2, "class", "card svelte-1946wek");
     			add_location(div2, file, 22, 0, 556);
     		},
     		l: function claim(nodes) {

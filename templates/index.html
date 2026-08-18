@@ -26,7 +26,7 @@
         <div class="splash-content">
             <p class="splash-kicker">Hi, I'm Martin Evenbom</p>
             <h2 class="splash-title">Computer Engineering Student</h2>
-            <p class="splash-subtitle">Always learning, building, and sharing what I discover.</p>
+            <!-- <p class="splash-subtitle">Always learning, building, and sharing what I discover.</p> -->
         </div>
         <div class="splash-orb splash-orb--one"></div>
         <div class="splash-orb splash-orb--two"></div>
@@ -39,10 +39,14 @@
         </style>
     </noscript>
     <header>
-        <h1>Martin Evenbom · Computer Engineering Student</h1>
-        <p class="site-tagline">Always learning and improving through code.</p>
+        <h1 class="gradient-text">Martin Evenbom · Computer Engineering Student</h1>
+        <!--<p class="site-tagline">Always learning and improving!</p>-->
+        <nav class="site-nav">
+            <a href="/blog">Blog</a>
+        </nav>
     </header>
     <main>
+        <h3 class="section-heading">Some of my projects on github</h3>
         <div id="projects" 
              hx-get="/projects" 
              hx-trigger="load" 
