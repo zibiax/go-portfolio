@@ -13,5 +13,8 @@
     "rollup-plugin-svelte": "^7.2.3",
     "rollup-plugin-css-only": "^4.5.5",
     "svelte": "^5.56.9"
+  },
+  "overrides": {
+    "picomatch": "^4.0.5"
   }
 }
