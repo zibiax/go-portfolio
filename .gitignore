@@ -2,12 +2,9 @@ svelte-components/node_modules/
 data/
 .env
 
-# Compiled binaries — rebuilt by `go build` / the Dockerfile, never hand-edited.
 /go-portfolio
 /portfolio
 
-# Rollup/Svelte build output — rebuilt by `npm run build` / the Dockerfile's
-# frontend stage. Run `npm run build` in svelte-components/ for local dev.
 static/js/bundle.js
 static/js/bundle.js.map
 static/js/bundle.css
