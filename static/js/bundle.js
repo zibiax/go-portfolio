@@ -91,6 +91,7 @@
 	const HEAD_EFFECT = 1 << 18;
 	const EFFECT_PRESERVED = 1 << 19;
 	const USER_EFFECT = 1 << 20;
+	const EFFECT_OFFSCREEN = 1 << 25;
 
 	// Flags exclusive to deriveds
 	/**
@@ -108,6 +109,8 @@
 	const ERROR_VALUE = 1 << 23;
 
 	const STATE_SYMBOL = Symbol('$state');
+	const LOADING_ATTR_SYMBOL = Symbol('');
+	const PROXY_PATH_SYMBOL = Symbol('proxy path');
 	const ATTRIBUTES_CACHE = Symbol('attributes');
 	const CLASS_CACHE = Symbol('class');
 	const STYLE_CACHE = Symbol('style');
@@ -155,6 +158,19 @@
 	function component_api_invalid_new(component, name) {
 		{
 			throw new Error(`https://svelte.dev/e/component_api_invalid_new`);
+		}
+	}
+
+	/**
+	 * Keyed each block has duplicate key `%value%` at indexes %a% and %b%
+	 * @param {string} a
+	 * @param {string} b
+	 * @param {string | undefined | null} [value]
+	 * @returns {never}
+	 */
+	function each_key_duplicate(a, b, value) {
+		{
+			throw new Error(`https://svelte.dev/e/each_key_duplicate`);
 		}
 	}
 
@@ -208,6 +224,9 @@
 		}
 	}
 
+	const EACH_ITEM_REACTIVE = 1;
+	const EACH_INDEX_REACTIVE = 1 << 1;
+	const EACH_ITEM_IMMUTABLE = 1 << 4;
 	const TEMPLATE_USE_IMPORT_NODE = 1 << 1;
 
 	const UNINITIALIZED = Symbol('uninitialized');
@@ -230,12 +249,30 @@
 	}
 
 	/**
+	 * Reactive `$state(...)` proxies and the values they proxy have different identities. Because of this, comparisons with `%operator%` will produce unexpected results
+	 * @param {string} operator
+	 */
+	function state_proxy_equality_mismatch(operator) {
+		{
+			console.warn(`https://svelte.dev/e/state_proxy_equality_mismatch`);
+		}
+	}
+
+	/**
 	 * A `<svelte:boundary>` `reset` function only resets the boundary the first time it is called
 	 */
 	function svelte_boundary_reset_noop() {
 		{
 			console.warn(`https://svelte.dev/e/svelte_boundary_reset_noop`);
 		}
+	}
+
+	/** @import { TemplateNode } from '#client' */
+
+
+	/** @param {TemplateNode} node */
+	function reset(node) {
+		return;
 	}
 
 	/** @import { Equals } from '#client' */
@@ -245,9 +282,48 @@
 		return value === this.v;
 	}
 
+	/**
+	 * @param {unknown} a
+	 * @param {unknown} b
+	 * @returns {boolean}
+	 */
+	function safe_not_equal(a, b) {
+		return a != a
+			? b == b
+			: a !== b || (a !== null && typeof a === 'object') || typeof a === 'function';
+	}
+
+	/** @type {Equals} */
+	function safe_equals(value) {
+		return !safe_not_equal(value, this.v);
+	}
+
 	/** True if experimental.async=true */
 	/** True if $inspect.trace is used */
 	let tracing_mode_flag = false;
+
+	/** @import { Derived, Reaction, Value } from '#client' */
+
+	/**
+	 * @param {Value} source
+	 * @param {string} label
+	 */
+	function tag(source, label) {
+		source.label = label;
+		tag_proxy(source.v, label);
+
+		return source;
+	}
+
+	/**
+	 * @param {unknown} value
+	 * @param {string} label
+	 */
+	function tag_proxy(value, label) {
+		// @ts-expect-error
+		value?.[PROXY_PATH_SYMBOL]?.(label);
+		return value;
+	}
 
 	/** @import { ComponentContext, DevStackEntry, Effect } from '#client' */
 
@@ -1366,6 +1442,32 @@
 
 			next(promise);
 		});
+	}
+
+	/**
+	 * @template V
+	 * @param {() => V} fn
+	 * @returns {Derived<V>}
+	 */
+	/*#__NO_SIDE_EFFECTS__*/
+	function user_derived(fn) {
+		const d = derived(fn);
+
+		push_reaction_value(d);
+
+		return d;
+	}
+
+	/**
+	 * @template V
+	 * @param {() => V} fn
+	 * @returns {Derived<V>}
+	 */
+	/*#__NO_SIDE_EFFECTS__*/
+	function derived_safe_equal(fn) {
+		const signal = derived(fn);
+		signal.equals = safe_equals;
+		return signal;
 	}
 
 	/**
@@ -2643,6 +2745,22 @@
 
 	/**
 	 * @template V
+	 * @param {V} initial_value
+	 * @param {boolean} [immutable]
+	 * @returns {Source<V>}
+	 */
+	/*#__NO_SIDE_EFFECTS__*/
+	function mutable_source(initial_value, immutable = false, trackable = true) {
+		const s = source(initial_value);
+		if (!immutable) {
+			s.equals = safe_equals;
+		}
+
+		return s;
+	}
+
+	/**
+	 * @template V
 	 * @param {Source<V>} source
 	 * @param {V} value
 	 * @param {boolean} [should_proxy]
@@ -3094,6 +3212,45 @@
 		});
 	}
 
+	/**
+	 * @param {any} value
+	 */
+	function get_proxied_value(value) {
+		try {
+			if (value !== null && typeof value === 'object' && STATE_SYMBOL in value) {
+				return value[STATE_SYMBOL];
+			}
+		} catch {
+			// the above if check can throw an error if the value in question
+			// is the contentWindow of an iframe on another domain, in which
+			// case we want to just return the value (because it's definitely
+			// not a proxied value) so we don't break any JavaScript interacting
+			// with that iframe (such as various payment companies client side
+			// JavaScript libraries interacting with their iframes on the same
+			// domain)
+		}
+
+		return value;
+	}
+
+	/**
+	 * @param {any} a
+	 * @param {any} b
+	 * @param {boolean} equal
+	 * @returns {boolean}
+	 */
+	function strict_equals(a, b, equal = true) {
+		// try-catch needed because this tries to read properties of `a` and `b`,
+		// which could be disallowed for example in a secure context
+		try {
+			if ((a === b) !== (get_proxied_value(a) === get_proxied_value(b))) {
+				state_proxy_equality_mismatch(equal ? '===' : '!==');
+			}
+		} catch {}
+
+		return (a === b) === equal;
+	}
+
 	/** @import { Effect, TemplateNode } from '#client' */
 
 	// export these for reference in the compiled code, making global name deduplication unnecessary
@@ -3199,6 +3356,15 @@
 		{
 			return next_sibling;
 		}
+	}
+
+	/**
+	 * @template {Node} N
+	 * @param {N} node
+	 * @returns {void}
+	 */
+	function clear_text_content(node) {
+		node.textContent = '';
 	}
 
 	/**
@@ -5089,6 +5255,599 @@
 		}, flags);
 	}
 
+	/** @import { EachItem, EachOutroGroup, EachState, Effect, EffectNodes, MaybeSource, Source, TemplateNode, TransitionManager, Value } from '#client' */
+	/** @import { Batch } from '../../reactivity/batch.js'; */
+
+	// When making substantive changes to this file, validate them with the each block stress test:
+	// https://svelte.dev/playground/1972b2cf46564476ad8c8c6405b23b7b
+	// This test also exists in this repo, as `packages/svelte/tests/manual/each-stress-test`
+
+	/**
+	 * @param {any} _
+	 * @param {number} i
+	 */
+	function index(_, i) {
+		return i;
+	}
+
+	/**
+	 * Pause multiple effects simultaneously, and coordinate their
+	 * subsequent destruction. Used in each blocks
+	 * @param {EachState} state
+	 * @param {Effect[]} to_destroy
+	 * @param {null | Node} controlled_anchor
+	 */
+	function pause_effects(state, to_destroy, controlled_anchor) {
+		/** @type {TransitionManager[]} */
+		var transitions = [];
+		var length = to_destroy.length;
+
+		/** @type {EachOutroGroup} */
+		var group;
+		var remaining = to_destroy.length;
+
+		for (var i = 0; i < length; i++) {
+			let effect = to_destroy[i];
+
+			pause_effect(
+				effect,
+				() => {
+					if (group) {
+						group.pending.delete(effect);
+						group.done.add(effect);
+
+						if (group.pending.size === 0) {
+							var groups = /** @type {Set<EachOutroGroup>} */ (state.outrogroups);
+
+							destroy_effects(state, array_from(group.done));
+							groups.delete(group);
+
+							if (groups.size === 0) {
+								state.outrogroups = null;
+							}
+						}
+					} else {
+						remaining -= 1;
+					}
+				},
+				false
+			);
+		}
+
+		if (remaining === 0) {
+			// If we're in a controlled each block (i.e. the block is the only child of an
+			// element), and we are removing all items, _and_ there are no out transitions,
+			// we can use the fast path — emptying the element and replacing the anchor.
+			// Skip the fast path when another batch is still pending on this each block:
+			// that batch's keys still reference EachItems in `state.items`, which
+			// `destroy_effects` needs to preserve offscreen (see #18610).
+			var fast_path =
+				transitions.length === 0 && controlled_anchor !== null && state.pending.size === 0;
+
+			if (fast_path) {
+				var anchor = /** @type {Element} */ (controlled_anchor);
+				var parent_node = /** @type {Element} */ (anchor.parentNode);
+
+				clear_text_content(parent_node);
+				parent_node.append(anchor);
+
+				state.items.clear();
+			}
+
+			destroy_effects(state, to_destroy, !fast_path);
+		} else {
+			group = {
+				pending: new Set(to_destroy),
+				done: new Set()
+			};
+
+			(state.outrogroups ??= new Set()).add(group);
+		}
+	}
+
+	/**
+	 * @param {EachState} state
+	 * @param {Effect[]} to_destroy
+	 * @param {boolean} remove_dom
+	 */
+	function destroy_effects(state, to_destroy, remove_dom = true) {
+		/** @type {Set<Effect> | undefined} */
+		var preserved_effects;
+
+		// The loop-in-a-loop isn't ideal, but we should only hit this in relatively rare cases
+		if (state.pending.size > 0) {
+			preserved_effects = new Set();
+
+			for (const keys of state.pending.values()) {
+				for (const key of keys) {
+					preserved_effects.add(/** @type {EachItem} */ (state.items.get(key)).e);
+				}
+			}
+		}
+
+		for (var i = 0; i < to_destroy.length; i++) {
+			var e = to_destroy[i];
+
+			if (preserved_effects?.has(e)) {
+				e.f |= EFFECT_OFFSCREEN;
+
+				const fragment = document.createDocumentFragment();
+				move_effect(e, fragment);
+			} else {
+				destroy_effect(to_destroy[i], remove_dom);
+			}
+		}
+	}
+
+	/** @type {TemplateNode} */
+	var offscreen_anchor;
+
+	/**
+	 * @template V
+	 * @param {Element | Comment} node The next sibling node, or the parent node if this is a 'controlled' block
+	 * @param {number} flags
+	 * @param {() => V[]} get_collection
+	 * @param {(value: V, index: number) => any} get_key
+	 * @param {(anchor: Node, item: MaybeSource<V>, index: MaybeSource<number>) => void} render_fn
+	 * @param {null | ((anchor: Node) => void)} fallback_fn
+	 * @returns {void}
+	 */
+	function each(node, flags, get_collection, get_key, render_fn, fallback_fn = null) {
+		var anchor = node;
+
+		/** @type {Map<any, EachItem>} */
+		var items = new Map();
+
+		{
+			var parent_node = /** @type {Element} */ (node);
+
+			anchor = parent_node.appendChild(create_text());
+		}
+
+		/** @type {Effect | null} */
+		var fallback = null;
+
+		// TODO: ideally we could use derived for runes mode but because of the ability
+		// to use a store which can be mutated, we can't do that here as mutating a store
+		// will still result in the collection array being the same from the store
+		var each_array = derived_safe_equal(() => {
+			var collection = get_collection();
+
+			return /** @type {V[]} */ (
+				is_array(collection) ? collection : collection == null ? [] : array_from(collection)
+			);
+		});
+
+		/** @type {V[]} */
+		var array;
+
+		/** @type {Map<Batch, Set<any>>} */
+		var pending = new Map();
+
+		var first_run = true;
+
+		/**
+		 * @param {Batch} batch
+		 */
+		function commit(batch) {
+			if ((state.effect.f & DESTROYED) !== 0) {
+				return;
+			}
+
+			state.pending.delete(batch);
+
+			state.fallback = fallback;
+			reconcile(state, array, anchor, flags, get_key);
+
+			if (fallback !== null) {
+				if (array.length === 0) {
+					if ((fallback.f & EFFECT_OFFSCREEN) === 0) {
+						resume_effect(fallback);
+					} else {
+						fallback.f ^= EFFECT_OFFSCREEN;
+						move(fallback, null, anchor);
+					}
+				} else {
+					pause_effect(fallback, () => {
+						// TODO only null out if no pending batch needs it,
+						// otherwise re-add `fallback.fragment` and move the
+						// effect into it
+						fallback = null;
+					});
+				}
+			}
+		}
+
+		/**
+		 * @param {Batch} batch
+		 */
+		function discard(batch) {
+			state.pending.delete(batch);
+		}
+
+		var effect = block(() => {
+			array = /** @type {V[]} */ (get(each_array));
+			var length = array.length;
+
+			var keys = new Set();
+			var batch = /** @type {Batch} */ (current_batch);
+			var defer = should_defer_append();
+
+			for (var index = 0; index < length; index += 1) {
+
+				var value = array[index];
+				var key = get_key(value, index);
+
+				var item = first_run ? null : items.get(key);
+
+				if (item) {
+					// update before reconciliation, to trigger any async updates
+					if (item.v) internal_set(item.v, value);
+					if (item.i) internal_set(item.i, index);
+
+					if (defer) {
+						batch.unskip_effect(item.e);
+					}
+				} else {
+					item = create_item(
+						items,
+						first_run ? anchor : (offscreen_anchor ??= create_text()),
+						value,
+						key,
+						index,
+						render_fn,
+						flags,
+						get_collection
+					);
+
+					if (!first_run) {
+						item.e.f |= EFFECT_OFFSCREEN;
+					}
+
+					items.set(key, item);
+				}
+
+				keys.add(key);
+			}
+
+			if (length === 0 && fallback_fn && !fallback) {
+				if (first_run) {
+					fallback = branch(() => fallback_fn(anchor));
+				} else {
+					fallback = branch(() => fallback_fn((offscreen_anchor ??= create_text())));
+					fallback.f |= EFFECT_OFFSCREEN;
+				}
+			}
+
+			if (length > keys.size) {
+				{
+					// in prod, the additional information isn't printed, so don't bother computing it
+					each_key_duplicate();
+				}
+			}
+
+			if (!first_run) {
+				pending.set(batch, keys);
+
+				if (defer) {
+					for (const [key, item] of items) {
+						if (!keys.has(key)) {
+							batch.skip_effect(item.e);
+						}
+					}
+
+					batch.oncommit(commit);
+					batch.ondiscard(discard);
+				} else {
+					commit(batch);
+				}
+			}
+
+			// When we mount the each block for the first time, the collection won't be
+			// connected to this effect as the effect hasn't finished running yet and its deps
+			// won't be assigned. However, it's possible that when reconciling the each block
+			// that a mutation occurred and it's made the collection MAYBE_DIRTY, so reading the
+			// collection again can provide consistency to the reactive graph again as the deriveds
+			// will now be `CLEAN`.
+			get(each_array);
+		});
+
+		/** @type {EachState} */
+		var state = { effect, items, pending, outrogroups: null, fallback };
+
+		first_run = false;
+	}
+
+	/**
+	 * Skip past any non-branch effects (which could be created with `createSubscriber`, for example) to find the next branch effect
+	 * @param {Effect | null} effect
+	 * @returns {Effect | null}
+	 */
+	function skip_to_branch(effect) {
+		while (effect !== null && (effect.f & BRANCH_EFFECT) === 0) {
+			effect = effect.next;
+		}
+		return effect;
+	}
+
+	/**
+	 * Add, remove, or reorder items output by an each block as its input changes
+	 * @template V
+	 * @param {EachState} state
+	 * @param {Array<V>} array
+	 * @param {Element | Comment | Text} anchor
+	 * @param {number} flags
+	 * @param {(value: V, index: number) => any} get_key
+	 * @returns {void}
+	 */
+	function reconcile(state, array, anchor, flags, get_key) {
+
+		var length = array.length;
+		var items = state.items;
+		var current = skip_to_branch(state.effect.first);
+
+		/** @type {undefined | Set<Effect>} */
+		var seen;
+
+		/** @type {Effect | null} */
+		var prev = null;
+
+		/** @type {Effect[]} */
+		var matched = [];
+
+		/** @type {Effect[]} */
+		var stashed = [];
+
+		/** @type {V} */
+		var value;
+
+		/** @type {any} */
+		var key;
+
+		/** @type {Effect | undefined} */
+		var effect;
+
+		/** @type {number} */
+		var i;
+
+		for (i = 0; i < length; i += 1) {
+			value = array[i];
+			key = get_key(value, i);
+
+			effect = /** @type {EachItem} */ (items.get(key)).e;
+
+			if (state.outrogroups !== null) {
+				for (const group of state.outrogroups) {
+					group.pending.delete(effect);
+					group.done.delete(effect);
+				}
+			}
+
+			if ((effect.f & INERT) !== 0) {
+				resume_effect(effect);
+			}
+
+			if ((effect.f & EFFECT_OFFSCREEN) !== 0) {
+				effect.f ^= EFFECT_OFFSCREEN;
+
+				if (effect === current) {
+					move(effect, null, anchor);
+				} else {
+					var next = prev ? prev.next : current;
+
+					if (effect === state.effect.last) {
+						state.effect.last = effect.prev;
+					}
+
+					if (effect.prev) effect.prev.next = effect.next;
+					if (effect.next) effect.next.prev = effect.prev;
+					link(state, prev, effect);
+					link(state, effect, next);
+
+					move(effect, next, anchor);
+					prev = effect;
+
+					matched = [];
+					stashed = [];
+
+					current = skip_to_branch(prev.next);
+					continue;
+				}
+			}
+
+			if (effect !== current) {
+				if (seen !== undefined && seen.has(effect)) {
+					if (matched.length < stashed.length) {
+						// more efficient to move later items to the front
+						var start = stashed[0];
+						var j;
+
+						prev = start.prev;
+
+						var a = matched[0];
+						var b = matched[matched.length - 1];
+
+						for (j = 0; j < matched.length; j += 1) {
+							move(matched[j], start, anchor);
+						}
+
+						for (j = 0; j < stashed.length; j += 1) {
+							seen.delete(stashed[j]);
+						}
+
+						link(state, a.prev, b.next);
+						link(state, prev, a);
+						link(state, b, start);
+
+						current = start;
+						prev = b;
+						i -= 1;
+
+						matched = [];
+						stashed = [];
+					} else {
+						// more efficient to move earlier items to the back
+						seen.delete(effect);
+						move(effect, current, anchor);
+
+						link(state, effect.prev, effect.next);
+						link(state, effect, prev === null ? state.effect.first : prev.next);
+						link(state, prev, effect);
+
+						prev = effect;
+					}
+
+					continue;
+				}
+
+				matched = [];
+				stashed = [];
+
+				while (current !== null && current !== effect) {
+					(seen ??= new Set()).add(current);
+					stashed.push(current);
+					current = skip_to_branch(current.next);
+				}
+
+				if (current === null) {
+					continue;
+				}
+			}
+
+			if ((effect.f & EFFECT_OFFSCREEN) === 0) {
+				matched.push(effect);
+			}
+
+			prev = effect;
+			current = skip_to_branch(effect.next);
+		}
+
+		if (state.outrogroups !== null) {
+			for (const group of state.outrogroups) {
+				if (group.pending.size === 0) {
+					destroy_effects(state, array_from(group.done));
+					state.outrogroups?.delete(group);
+				}
+			}
+
+			if (state.outrogroups.size === 0) {
+				state.outrogroups = null;
+			}
+		}
+
+		if (current !== null || seen !== undefined) {
+			/** @type {Effect[]} */
+			var to_destroy = [];
+
+			if (seen !== undefined) {
+				for (effect of seen) {
+					if ((effect.f & INERT) === 0) {
+						to_destroy.push(effect);
+					}
+				}
+			}
+
+			while (current !== null) {
+				// If the each block isn't inert, then inert effects are currently outroing and will be removed once the transition is finished
+				if ((current.f & INERT) === 0 && current !== state.fallback) {
+					to_destroy.push(current);
+				}
+
+				current = skip_to_branch(current.next);
+			}
+
+			var destroy_length = to_destroy.length;
+
+			if (destroy_length > 0) {
+				var controlled_anchor = length === 0 ? anchor : null;
+
+				pause_effects(state, to_destroy, controlled_anchor);
+			}
+		}
+	}
+
+	/**
+	 * @template V
+	 * @param {Map<any, EachItem>} items
+	 * @param {Node} anchor
+	 * @param {V} value
+	 * @param {unknown} key
+	 * @param {number} index
+	 * @param {(anchor: Node, item: V | Source<V>, index: number | Value<number>, collection: () => V[]) => void} render_fn
+	 * @param {number} flags
+	 * @param {() => V[]} get_collection
+	 * @returns {EachItem}
+	 */
+	function create_item(items, anchor, value, key, index, render_fn, flags, get_collection) {
+		var v =
+			(flags & EACH_ITEM_REACTIVE) !== 0
+				? (flags & EACH_ITEM_IMMUTABLE) === 0
+					? mutable_source(value, false, false)
+					: source(value)
+				: null;
+
+		var i = (flags & EACH_INDEX_REACTIVE) !== 0 ? source(index) : null;
+
+		return {
+			v,
+			i,
+			e: branch(() => {
+				render_fn(anchor, v ?? value, i ?? index, get_collection);
+
+				return () => {
+					items.delete(key);
+				};
+			})
+		};
+	}
+
+	/**
+	 * @param {Effect} effect
+	 * @param {Effect | null} next
+	 * @param {Text | Element | Comment} anchor
+	 */
+	function move(effect, next, anchor) {
+		if (!effect.nodes) return;
+
+		var node = effect.nodes.start;
+		var end = effect.nodes.end;
+
+		var dest =
+			next && (next.f & EFFECT_OFFSCREEN) === 0
+				? /** @type {EffectNodes} */ (next.nodes).start
+				: anchor;
+
+		while (node !== null) {
+			var next_node = /** @type {TemplateNode} */ (get_next_sibling(node));
+			dest.before(node);
+
+			if (node === end) {
+				return;
+			}
+
+			node = next_node;
+		}
+	}
+
+	/**
+	 * @param {EachState} state
+	 * @param {Effect | null} prev
+	 * @param {Effect | null} next
+	 */
+	function link(state, prev, next) {
+		if (prev === null) {
+			state.effect.first = next;
+		} else {
+			prev.next = next;
+		}
+
+		if (next === null) {
+			state.effect.last = prev;
+		} else {
+			next.prev = prev;
+		}
+	}
+
 	/**
 	 * @param {any} value
 	 * @param {Record<string, any> | [Record<string, any>, Record<string, any>]} [styles]
@@ -5140,6 +5899,11 @@
 		var attributes = get_attributes(element);
 
 		if (attributes[attribute] === (attributes[attribute] = value)) return;
+
+		if (attribute === 'loading') {
+			// @ts-expect-error
+			element[LOADING_ATTR_SYMBOL] = value;
+		}
 
 		if (value == null) {
 			element.removeAttribute(attribute);
@@ -5212,9 +5976,21 @@
 
 	ProjectCard[FILENAME] = 'src/ProjectCard.svelte';
 
-	var root = add_locations(from_html(`<div class="language svelte-171e9qy"><span class="language-dot svelte-171e9qy"></span> </div>`), ProjectCard[FILENAME], [[28, 16, [[29, 20]]]]);
-	var root_1 = add_locations(from_html(`<p class="description svelte-171e9qy"> </p>`), ProjectCard[FILENAME], [[36, 12]]);
-	var root_2 = add_locations(from_html(`<div class="card svelte-171e9qy"><div class="card-content"><div class="header svelte-171e9qy"><h2 class="project-name svelte-171e9qy"> </h2> <!></div> <!> <a target="_blank" rel="noopener noreferrer" class="github-link svelte-171e9qy">View on GitHub</a></div></div>`), ProjectCard[FILENAME], [[23, 0, [[24, 4, [[25, 8, [[26, 12]]], [39, 8]]]]]]);
+	var root = add_locations(from_html(`<span class="stars svelte-171e9qy"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M8 .25l2.06 4.17 4.6.67-3.33 3.24.79 4.58L8 10.75l-4.12 2.16.79-4.58L1.34 5.09l4.6-.67z"></path></svg> </span>`), ProjectCard[FILENAME], [[53, 16, [[54, 20, [[55, 24]]]]]]);
+	var root_1 = add_locations(from_html(`<p class="description svelte-171e9qy"> </p>`), ProjectCard[FILENAME], [[63, 12]]);
+	var root_2 = add_locations(from_html(`<p class="description description--empty svelte-171e9qy">No description provided.</p>`), ProjectCard[FILENAME], [[65, 12]]);
+	var root_3 = add_locations(from_html(`<li class="svelte-171e9qy"> </li>`), ProjectCard[FILENAME], [[71, 20]]);
+	var root_4 = add_locations(from_html(`<ul class="topics svelte-171e9qy"></ul>`), ProjectCard[FILENAME], [[69, 12]]);
+	var root_5 = add_locations(from_html(`<span class="language svelte-171e9qy"><span class="language-dot svelte-171e9qy"></span> </span>`), ProjectCard[FILENAME], [[78, 16, [[79, 20]]]]);
+	var root_6 = add_locations(from_html(`<span class="updated svelte-171e9qy"> </span>`), ProjectCard[FILENAME], [[84, 16]]);
+
+	var root_7 = add_locations(from_html(`<article class="card svelte-171e9qy"><div class="card-content svelte-171e9qy"><div class="header svelte-171e9qy"><h3 class="project-name svelte-171e9qy"> </h3> <!></div> <!> <!> <div class="meta svelte-171e9qy"><!> <!></div> <a target="_blank" rel="noopener noreferrer" class="github-link svelte-171e9qy">View on GitHub <span class="arrow svelte-171e9qy" aria-hidden="true">→</span></a></div></article>`), ProjectCard[FILENAME], [
+		[
+			48,
+			0,
+			[[49, 4, [[50, 8, [[51, 12]]], [76, 8], [88, 8, [[90, 12]]]]]]
+		]
+	]);
 
 	function ProjectCard($$anchor, $$props) {
 		check_target(new.target);
@@ -5229,55 +6005,81 @@
 			'html': '#e34c26',
 			'css': '#563d7c',
 			'rust': '#dea584',
+			'c': '#555555',
+			'c++': '#f34b7d',
+			'c#': '#178600',
+			'shell': '#89e051',
+			'svelte': '#ff3e00',
+			'lua': '#000080',
 			'default': '#6e7681'
 		};
 
 		function getLanguageColor(lang) {
 			if (!lang) return languageColors.default;
 
-			const normalizedLang = lang.toLowerCase();
-
-			return languageColors[normalizedLang] || languageColors.default;
+			return languageColors[lang.toLowerCase()] || languageColors.default;
 		}
 
-		var $$exports = { ...legacy_api() };
-		var div = root_2();
-		var div_1 = child(div);
-		var div_2 = child(div_1);
-		var h2 = child(div_2);
-		var text = child(h2);
+		function formatUpdated(value) {
+			if (!value) return '';
 
-		var node = sibling(h2, 2);
+			const date = new Date(value);
+
+			if (Number.isNaN(date.getTime())) return '';
+
+			const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+
+			if (days <= 0) return 'Updated today';
+			if (strict_equals(days, 1)) return 'Updated yesterday';
+			if (days < 30) return `Updated ${days} days ago`;
+
+			if (days < 365) {
+				const months = Math.round(days / 30);
+
+				return `Updated ${months} month${strict_equals(months, 1) ? '' : 's'} ago`;
+			}
+
+			const years = Math.round(days / 365);
+
+			return `Updated ${years} year${strict_equals(years, 1) ? '' : 's'} ago`;
+		}
+
+		const updated = tag(user_derived(() => formatUpdated($$props.project.lastUpdated)), 'updated');
+		const topics = tag(user_derived(() => ($$props.project.topics || []).slice(0, 3)), 'topics');
+		var $$exports = { ...legacy_api() };
+		var article = root_7();
+		var div = child(article);
+		var div_1 = child(div);
+		var h3 = child(div_1);
+		var text = child(h3);
+
+		var node = sibling(h3, 2);
 
 		{
 			var consequent = ($$anchor) => {
-				var div_3 = root();
-				var span = child(div_3);
-				var text_1 = sibling(span);
+				var span = root();
+				var text_1 = sibling(child(span));
 
-				template_effect(
-					($0) => {
-						set_style(span, `background-color: ${$0 ?? ''}`);
-						set_text(text_1, ` ${$$props.project.language ?? ''}`);
-					},
-					[() => getLanguageColor($$props.project.language)]
-				);
+				template_effect(() => {
+					set_attribute(span, 'title', `${$$props.project.stars ?? ''} stars`);
+					set_text(text_1, ` ${$$props.project.stars ?? ''}`);
+				});
 
-				append($$anchor, div_3);
+				append($$anchor, span);
 			};
 
 			add_svelte_meta(
 				() => if_block(node, ($$render) => {
-					if ($$props.project.language) $$render(consequent);
+					if ($$props.project.stars > 0) $$render(consequent);
 				}),
 				'if',
 				ProjectCard,
-				27,
+				52,
 				12
 			);
 		}
 
-		var node_1 = sibling(div_2, 2);
+		var node_1 = sibling(div_1, 2);
 
 		{
 			var consequent_1 = ($$anchor) => {
@@ -5287,56 +6089,199 @@
 				append($$anchor, p);
 			};
 
+			var alternate = ($$anchor) => {
+				var p_1 = root_2();
+
+				append($$anchor, p_1);
+			};
+
 			add_svelte_meta(
 				() => if_block(node_1, ($$render) => {
-					if ($$props.project.description) $$render(consequent_1);
+					if ($$props.project.description) $$render(consequent_1); else $$render(alternate, -1);
 				}),
 				'if',
 				ProjectCard,
-				35,
+				62,
 				8
 			);
 		}
 
-		var a = sibling(node_1, 2);
+		var node_2 = sibling(node_1, 2);
+
+		{
+			var consequent_2 = ($$anchor) => {
+				var ul = root_4();
+
+				add_svelte_meta(
+					() => each(ul, 21, () => get(topics), index, ($$anchor, topic) => {
+						var li = root_3();
+						var text_3 = child(li, true);
+
+						reset(li);
+						template_effect(() => set_text(text_3, get(topic)));
+						append($$anchor, li);
+					}),
+					'each',
+					ProjectCard,
+					70,
+					16
+				);
+				append($$anchor, ul);
+			};
+
+			add_svelte_meta(
+				() => if_block(node_2, ($$render) => {
+					if (get(topics).length > 0) $$render(consequent_2);
+				}),
+				'if',
+				ProjectCard,
+				68,
+				8
+			);
+		}
+
+		var div_2 = sibling(node_2, 2);
+		var node_3 = child(div_2);
+
+		{
+			var consequent_3 = ($$anchor) => {
+				var span_1 = root_5();
+				var span_2 = child(span_1);
+				var text_4 = sibling(span_2);
+
+				template_effect(
+					($0) => {
+						set_style(span_2, `background-color: ${$0 ?? ''}`);
+						set_text(text_4, ` ${$$props.project.language ?? ''}`);
+					},
+					[() => getLanguageColor($$props.project.language)]
+				);
+
+				append($$anchor, span_1);
+			};
+
+			add_svelte_meta(
+				() => if_block(node_3, ($$render) => {
+					if ($$props.project.language) $$render(consequent_3);
+				}),
+				'if',
+				ProjectCard,
+				77,
+				12
+			);
+		}
+
+		var node_4 = sibling(node_3, 2);
+
+		{
+			var consequent_4 = ($$anchor) => {
+				var span_3 = root_6();
+				var text_5 = child(span_3);
+				template_effect(() => set_text(text_5, get(updated)));
+				append($$anchor, span_3);
+			};
+
+			add_svelte_meta(
+				() => if_block(node_4, ($$render) => {
+					if (get(updated)) $$render(consequent_4);
+				}),
+				'if',
+				ProjectCard,
+				83,
+				12
+			);
+		}
+
+		var a = sibling(div_2, 2);
 
 		template_effect(() => {
 			set_text(text, $$props.project.name);
 			set_attribute(a, 'href', $$props.project.url);
 		});
 
-		append($$anchor, div);
+		append($$anchor, article);
 
 		return pop($$exports);
 	}
 
-	document.addEventListener('htmx:afterSwap', function(event) {
-	    if (event.detail.target.id === 'projects') {
-	        try {
-	            const projects = JSON.parse(event.detail.xhr.response);
-	            const container = document.getElementById('projects');
-	            container.innerHTML = '';
+	const grid = document.getElementById('projects');
+	const status = document.getElementById('projects-status');
+	const loadMore = document.getElementById('load-more');
 
-	            if (projects.length === 0) {
-	                container.innerHTML = '<p>No projects found</p>';
-	                return;
-	            }
+	let nextPage = 1;
+	let loading = false;
 
-	            projects.forEach(project => {
-	                const div = document.createElement('div');
-	                mount(ProjectCard, {
-	                    target: div,
-	                    props: { project }
-	                });
-	                container.appendChild(div);
-	            });
-	        } catch (error) {
-	            console.error('Error processing projects:', error);
-	            const container = document.getElementById('projects');
-	            container.innerHTML = `<p>Error loading projects: ${error.message}</p>`;
-	        }
+	function setStatus(message, isError = false) {
+	    if (!status) return;
+	    status.textContent = message || '';
+	    status.hidden = !message;
+	    status.classList.toggle('projects-status--error', isError);
+	}
+
+	function renderProjects(projects) {
+	    projects.forEach((project, index) => {
+	        const div = document.createElement('div');
+	        div.className = 'project-card-wrap';
+	        // Stagger the entrance so a freshly loaded page fades in row by row.
+	        div.style.setProperty('--card-index', index);
+	        mount(ProjectCard, {
+	            target: div,
+	            props: { project }
+	        });
+	        grid.appendChild(div);
+	    });
+	}
+
+	async function loadPage() {
+	    if (loading) return;
+	    loading = true;
+
+	    if (loadMore) {
+	        loadMore.disabled = true;
+	        loadMore.textContent = 'Loading…';
 	    }
-	});
+	    setStatus(nextPage === 1 ? 'Loading projects…' : '');
+
+	    try {
+	        const response = await fetch(`/projects?page=${nextPage}`);
+	        if (!response.ok) {
+	            throw new Error(`Request failed with status ${response.status}`);
+	        }
+
+	        const { projects = [], hasMore = false } = await response.json();
+
+	        if (projects.length === 0 && nextPage === 1) {
+	            setStatus('No projects found.');
+	        } else {
+	            setStatus('');
+	            renderProjects(projects);
+	        }
+
+	        nextPage += 1;
+	        grid.setAttribute('aria-busy', 'false');
+	        if (loadMore) {
+	            loadMore.hidden = !hasMore;
+	            loadMore.disabled = false;
+	            loadMore.textContent = 'Load more projects';
+	        }
+	    } catch (error) {
+	        console.error('Error loading projects:', error);
+	        setStatus(`Could not load projects: ${error.message}`, true);
+	        grid.setAttribute('aria-busy', 'false');
+	        if (loadMore) {
+	            loadMore.hidden = false;
+	            loadMore.disabled = false;
+	            loadMore.textContent = 'Try again';
+	        }
+	    } finally {
+	        loading = false;
+	    }
+	}
+
+	if (grid) {
+	    loadMore?.addEventListener('click', loadPage);
+	    loadPage();
+	}
 
 })();
 //# sourceMappingURL=bundle.js.map

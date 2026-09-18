@@ -1,13 +1,15 @@
 
     .card.svelte-171e9qy {
         position: relative;
+        display: flex;
+        height: 100%;
         overflow: hidden;
-        background: rgba(255, 255, 255, 0.045);
-        border-radius: 14px;
-        padding: 1.5rem;
-        box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.7);
-        transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+        background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 16px;
+        box-shadow: 0 20px 45px -30px rgba(0, 0, 0, 0.85);
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                    border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
     }
 
     .card.svelte-171e9qy::before {
@@ -17,44 +19,103 @@
         left: 0;
         right: 0;
         height: 3px;
-        background: linear-gradient(135deg, #82aeff 0%, #ff8d69 100%);
+        background: linear-gradient(120deg, #82aeff 0%, #a9a0ff 45%, #ff8d69 100%);
         opacity: 0;
-        transition: opacity 0.25s ease;
+        transition: opacity 0.3s ease;
     }
 
     .card.svelte-171e9qy:hover {
         transform: translateY(-6px);
         border-color: rgba(130, 174, 255, 0.35);
         background: rgba(255, 255, 255, 0.065);
-        box-shadow: 0 30px 60px -30px rgba(110, 161, 255, 0.45);
+        box-shadow: 0 30px 60px -32px rgba(110, 161, 255, 0.5);
     }
 
     .card.svelte-171e9qy:hover::before {
         opacity: 1;
     }
 
+    .card-content.svelte-171e9qy {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        padding: 1.6rem;
+    }
+
     .header.svelte-171e9qy {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         gap: 0.75rem;
-        margin-bottom: 1rem;
     }
 
     .project-name.svelte-171e9qy {
         margin: 0;
-        color: #f4f7ff;
-        font-size: 1.15rem;
+        color: #f6f8ff;
+        font-size: 1.12rem;
         font-weight: 700;
-        letter-spacing: -0.01em;
+        letter-spacing: -0.015em;
+        word-break: break-word;
+    }
+
+    .stars.svelte-171e9qy {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        flex-shrink: 0;
+        color: #e3c96a;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .description.svelte-171e9qy {
+        color: rgba(233, 236, 243, 0.68);
+        margin: 0.85rem 0 0;
+        line-height: 1.6;
+        font-size: 0.93rem;
+    }
+
+    .description--empty.svelte-171e9qy {
+        color: rgba(233, 236, 243, 0.38);
+        font-style: italic;
+    }
+
+    .topics.svelte-171e9qy {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        list-style: none;
+        margin: 1rem 0 0;
+        padding: 0;
+    }
+
+    .topics.svelte-171e9qy li:where(.svelte-171e9qy) {
+        font-size: 0.74rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: rgba(130, 174, 255, 0.9);
+        background: rgba(110, 161, 255, 0.1);
+        border: 1px solid rgba(110, 161, 255, 0.22);
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+    }
+
+    /* Pushes the meta row and link to the bottom so cards in a row align. */
+    .meta.svelte-171e9qy {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.9rem;
+        margin-top: auto;
+        padding-top: 1.25rem;
+        color: rgba(233, 236, 243, 0.5);
+        font-size: 0.8rem;
     }
 
     .language.svelte-171e9qy {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 0.4rem;
-        color: rgba(233, 236, 243, 0.5);
-        font-size: 0.82rem;
         white-space: nowrap;
     }
 
@@ -64,33 +125,51 @@
         border-radius: 50%;
     }
 
-    .description.svelte-171e9qy {
-        color: rgba(233, 236, 243, 0.68);
-        margin: 1rem 0;
-        line-height: 1.55;
-        font-size: 0.95rem;
+    .updated.svelte-171e9qy {
+        white-space: nowrap;
     }
 
     .github-link.svelte-171e9qy {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
         width: 100%;
-        background: rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.05);
         color: #e9ecf3;
         text-decoration: none;
         padding: 0.7rem;
-        border-radius: 8px;
+        border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        text-align: center;
         margin-top: 1rem;
         box-sizing: border-box;
         font-weight: 600;
         font-size: 0.9rem;
-        transition: background 0.2s ease, border-color 0.2s ease;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
     .github-link.svelte-171e9qy:hover {
         background: rgba(110, 161, 255, 0.16);
         border-color: rgba(110, 161, 255, 0.5);
         color: #82aeff;
+    }
+
+    .arrow.svelte-171e9qy {
+        transition: transform 0.2s ease;
+    }
+
+    .github-link.svelte-171e9qy:hover .arrow:where(.svelte-171e9qy) {
+        transform: translateX(3px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .card.svelte-171e9qy,
+        .arrow.svelte-171e9qy {
+            transition: none;
+        }
+
+        .card.svelte-171e9qy:hover {
+            transform: none;
+        }
     }
 

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/go-github/v35/github"
@@ -24,6 +25,16 @@ type Project struct {
 	Topics      []string  `json:"topics"`
 	Stars       int       `json:"stars"`
 	LastUpdated time.Time `json:"lastUpdated"`
+}
+
+// projectsPerPage is how many GitHub repositories are fetched per request.
+// The front page loads one page at a time behind a "Load more" button.
+const projectsPerPage = 15
+
+type ProjectsPage struct {
+	Projects []Project `json:"projects"`
+	Page     int       `json:"page"`
+	HasMore  bool      `json:"hasMore"`
 }
 
 func getProjectData(repo *github.Repository) Project {
@@ -103,20 +114,32 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleProjects(w http.ResponseWriter, r *http.Request) {
-	projects, err := getGithubProjects()
+	page := 1
+	if raw := r.URL.Query().Get("page"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			http.Error(w, "page must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		page = n
+	}
+
+	result, err := getGithubProjects(page)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(projects)
+	json.NewEncoder(w).Encode(result)
 }
 
-func getGithubProjects() ([]Project, error) {
+func getGithubProjects(page int) (ProjectsPage, error) {
+	result := ProjectsPage{Projects: []Project{}, Page: page}
+
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return nil, nil
+		return result, nil
 	}
 
 	ctx := context.Background()
@@ -127,23 +150,26 @@ func getGithubProjects() ([]Project, error) {
 	client := github.NewClient(tc)
 
 	opts := &github.RepositoryListOptions{
-		ListOptions: github.ListOptions{PerPage: 100},
-		Type:        "owner",
-		Sort:        "updated",
-		Direction:   "desc",
+		ListOptions: github.ListOptions{PerPage: projectsPerPage, Page: page},
+		Visibility:  "public",
+		Affiliation: "owner",
+		// "pushed" (last commit) rather than "updated" (any metadata change),
+		// so the first page holds the most recently worked-on repositories.
+		Sort:      "pushed",
+		Direction: "desc",
 	}
 
-	repos, _, err := client.Repositories.List(ctx, "", opts)
+	repos, resp, err := client.Repositories.List(ctx, "", opts)
 	if err != nil {
-		return nil, err
+		return ProjectsPage{}, err
 	}
 
-	var projects []Project
 	for _, repo := range repos {
 		if !repo.GetPrivate() {
-			projects = append(projects, getProjectData(repo))
+			result.Projects = append(result.Projects, getProjectData(repo))
 		}
 	}
+	result.HasMore = resp != nil && resp.NextPage != 0
 
-	return projects, nil
+	return result, nil
 }

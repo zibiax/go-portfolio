@@ -3,66 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Portfolio</title>
-    <script src="https://unpkg.com/htmx.org@1.6.1"></script>
+    <title>Martin Evenbom · Portfolio</title>
+    <meta name="description" content="Portfolio of Martin Evenbom, computer engineering student — projects, code and writing.">
+    <link rel="icon" href="/static/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/img/favicon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/img/favicon-512x512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/apple-touch-icon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="stylesheet" href="/static/js/bundle.css">
-    <script>
-        // Add debugging for HTMX events
-        document.addEventListener('htmx:afterRequest', function(evt) {
-            console.log('HTMX Request completed:', evt.detail);
-            if (evt.detail.failed) {
-                console.error('HTMX Request failed:', evt.detail.xhr.responseText);
-            }
-        });
-
-        document.addEventListener('htmx:afterSwap', function(evt) {
-            console.log('HTMX Content swapped:', evt.detail);
-        });
-    </script>
 </head>
-<body class="preload">
-    <div class="splash-screen" aria-hidden="true">
-        <div class="splash-content">
-            <p class="splash-kicker">Hi, I'm Martin Evenbom</p>
-            <h2 class="splash-title">Computer Engineering Student</h2>
-            <!-- <p class="splash-subtitle">Always learning, building, and sharing what I discover.</p> -->
-        </div>
-        <div class="splash-orb splash-orb--one"></div>
-        <div class="splash-orb splash-orb--two"></div>
-    </div>
-    <noscript>
-        <style>
-            body.preload header,
-            body.preload main { opacity: 1 !important; transform: none !important; }
-            .splash-screen { display: none !important; }
-        </style>
-    </noscript>
-    <header>
-        <h1 class="gradient-text">Martin Evenbom · Computer Engineering Student</h1>
-        <!--<p class="site-tagline">Always learning and improving!</p>-->
+<body>
+    <header class="site-header">
+        <p class="site-kicker">Hi, I'm Martin Evenbom</p>
+        <h1 class="gradient-text">Computer Engineering Student</h1>
+        <p class="site-tagline">Always learning, building, and sharing what I discover.</p>
         <nav class="site-nav">
             <a href="/blog">Blog</a>
+            <a href="https://github.com/zibiax" target="_blank" rel="noopener noreferrer">GitHub</a>
         </nav>
     </header>
     <main>
-        <h3 class="section-heading">Some of my projects on github</h3>
-        <div id="projects" 
-             hx-get="/projects" 
-             hx-trigger="load" 
-             hx-swap="innerHTML"
-             hx-indicator="#loading">
-            <div id="loading">Loading projects...</div>
-        </div>
+        <section class="projects-section">
+            <h2 class="section-heading">Some of my projects on GitHub</h2>
+            <div id="projects" class="project-grid" aria-busy="true" aria-live="polite"></div>
+            <p id="projects-status" class="projects-status">Loading projects…</p>
+            <div class="projects-actions">
+                <button id="load-more" type="button" class="btn btn-secondary" hidden>Load more projects</button>
+            </div>
+        </section>
     </main>
-    <script src="/static/js/bundle.js"></script>
+    <footer class="site-footer">
+        <p>© <span id="year">2026</span> Martin Evenbom</p>
+    </footer>
     <script>
-        window.addEventListener('load', function () {
-            setTimeout(function () {
-                document.body.classList.remove('preload');
-                document.body.classList.add('page-loaded');
-            }, 2000);
-        });
+        document.getElementById('year').textContent = new Date().getFullYear();
     </script>
+    <script src="/static/js/bundle.js"></script>
 </body>
 </html>

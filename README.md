@@ -1,5 +1,5 @@
 # New Portfolio In Golang
 Making a new portfolio website with:
 * Go backend
-* Htmx to handle dynamic and responsive interface with just an index-page
+* A paginated /projects JSON endpoint backed by the GitHub API (15 repos per page)
 * Svelte frontend
