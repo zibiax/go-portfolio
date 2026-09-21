@@ -264,17 +264,6 @@ header h1 {
     color: var(--text-bright);
 }
 
-.btn-danger {
-    background: transparent;
-    color: var(--danger);
-    border-color: rgba(255, 141, 105, 0.35);
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: rgba(255, 141, 105, 0.1);
-    border-color: var(--danger);
-}
-
 .link-button {
     background: none;
     border: none;
