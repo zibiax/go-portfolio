@@ -8,3 +8,13 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+
+  ssh-site:
+    build: ./ssh-site
+    ports:
+      # Host port 22 requires the real system sshd to be moved off port 22
+      # first (see README) -- only one process can bind it.
+      - "22:2500"
+    volumes:
+      - ./ssh-site-data:/app/data
+    restart: unless-stopped

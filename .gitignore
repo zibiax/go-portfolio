@@ -1,5 +1,6 @@
 svelte-components/node_modules/
 data/
+ssh-site-data/
 .env
 
 /go-portfolio

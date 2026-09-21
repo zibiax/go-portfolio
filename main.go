@@ -100,6 +100,8 @@ func main() {
 	mux.HandleFunc("POST /admin/posts/{id}/edit", requireAuth(handleAdminPostEditSubmit))
 	mux.HandleFunc("POST /admin/posts/{id}/delete", requireAuth(handleAdminPostDelete))
 
+	mux.HandleFunc("/", handleNotFound)
+
 	log.Println("Server starting on :5000")
 	log.Fatal(http.ListenAndServe(":5000", mux))
 }
@@ -110,6 +112,16 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	tmpl.Execute(w, nil)
+}
+
+func handleNotFound(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/404.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
 	tmpl.Execute(w, nil)
 }
 
