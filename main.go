@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v35/github"
@@ -30,6 +31,51 @@ type Project struct {
 // projectsPerPage is how many GitHub repositories are fetched per request.
 // The front page loads one page at a time behind a "Load more" button.
 const projectsPerPage = 15
+
+// GitHub is asked at most once per page per projectsCacheTTL, however often
+// /projects is hit, so traffic can't use up the token's hourly rate limit.
+// Pages past maxProjectsPage are refused, which keeps the number of distinct
+// cache entries (and so GitHub calls) bounded.
+const (
+	projectsCacheTTL = 15 * time.Minute
+	maxProjectsPage  = 20
+)
+
+type cachedProjectsPage struct {
+	page    ProjectsPage
+	fetched time.Time
+}
+
+var (
+	projectsCacheMu sync.Mutex
+	projectsCache   = map[int]cachedProjectsPage{}
+)
+
+// getCachedGithubProjects serves a page from the cache while it's fresh. When
+// the refresh fails (GitHub down, rate limited) it keeps serving the stale
+// copy rather than an error. The lock is held across the fetch so a burst of
+// requests on an expired page triggers one GitHub call, not one each.
+func getCachedGithubProjects(page int) (ProjectsPage, error) {
+	projectsCacheMu.Lock()
+	defer projectsCacheMu.Unlock()
+
+	cached, ok := projectsCache[page]
+	if ok && time.Since(cached.fetched) < projectsCacheTTL {
+		return cached.page, nil
+	}
+
+	fresh, err := getGithubProjects(page)
+	if err != nil {
+		if ok {
+			log.Printf("GitHub projects page %d: %v (serving cached copy)", page, err)
+			return cached.page, nil
+		}
+		return ProjectsPage{}, err
+	}
+
+	projectsCache[page] = cachedProjectsPage{page: fresh, fetched: time.Now()}
+	return fresh, nil
+}
 
 type ProjectsPage struct {
 	Projects []Project `json:"projects"`
@@ -129,16 +175,17 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	if raw := r.URL.Query().Get("page"); raw != "" {
 		n, err := strconv.Atoi(raw)
-		if err != nil || n < 1 {
-			http.Error(w, "page must be a positive integer", http.StatusBadRequest)
+		if err != nil || n < 1 || n > maxProjectsPage {
+			http.Error(w, fmt.Sprintf("page must be between 1 and %d", maxProjectsPage), http.StatusBadRequest)
 			return
 		}
 		page = n
 	}
 
-	result, err := getGithubProjects(page)
+	result, err := getCachedGithubProjects(page)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("GitHub projects page %d: %v", page, err)
+		http.Error(w, "couldn't load projects from GitHub", http.StatusBadGateway)
 		return
 	}
 
