@@ -1,4 +1,6 @@
-FROM node:22-slim AS frontend
+# The JS bundle and the Go binary are built on the runner's own platform and
+# cross-compiled; only the final stage is per-architecture (amd64 + arm64).
+FROM --platform=$BUILDPLATFORM node:22-slim AS frontend
 
 WORKDIR /app/svelte-components
 
@@ -9,7 +11,9 @@ COPY svelte-components/ ./
 COPY static/css ../static/css
 RUN npm run build
 
-FROM golang:1.25 AS build
+FROM --platform=$BUILDPLATFORM golang:1.25 AS build
+
+ARG TARGETOS TARGETARCH
 
 WORKDIR /app
 
@@ -17,11 +21,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY *.go ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /portfolio .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /portfolio .
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+# Copied rather than apt-installed, so this stage has no RUN step and needs
+# no emulation when built for another architecture.
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /app
 
